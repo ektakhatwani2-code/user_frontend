@@ -131,9 +131,17 @@ const AuthModal = () => {
         password: registerForm.password,
       });
       if (result.success) {
-        showToast('Account created successfully! Please log in.', 'success');
-        switchAuthMode('login');
-        setRegisterForm({ firstName: '', lastName: '', email: '', password: '', confirmPassword: '' });
+        if (result.autoLoggedIn) {
+          // User was auto-logged in after registration
+          showToast('Account created successfully! Welcome!', 'success');
+          await mergeGuestCart();
+          closeAuthModal();
+        } else {
+          // User needs to login manually
+          showToast('Account created successfully! Please log in.', 'success');
+          switchAuthMode('login');
+          setRegisterForm({ firstName: '', lastName: '', email: '', password: '', confirmPassword: '' });
+        }
       } else {
         showToast(result.message || 'Registration failed', 'error');
       }

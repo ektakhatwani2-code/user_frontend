@@ -25,26 +25,42 @@ export const AuthProvider = ({ children }) => {
   const checkAuth = async () => {
     try {
       const storedUser = localStorage.getItem('user');
-      if (storedUser) {
-        // Try to refresh token
-        const response = await axios.post(
-          `${import.meta.env.VITE_API_URL}/auth/refresh-token`,
-          {},
-          { withCredentials: true }
-        );
+      const storedToken = localStorage.getItem('accessToken');
 
-        if (response.data.success) {
-          setUser(response.data.user);
-          setAccessToken(response.data.accessToken);
+      if (storedUser && storedToken) {
+        // Try to refresh token
+        try {
+          const response = await axios.post(
+            `${import.meta.env.VITE_API_URL}/auth/refresh-token`,
+            {},
+            { withCredentials: true }
+          );
+
+          if (response.data.success) {
+            setUser(response.data.user);
+            setAccessToken(response.data.accessToken);
+            setIsAuthenticated(true);
+            localStorage.setItem('user', JSON.stringify(response.data.user));
+            localStorage.setItem('accessToken', response.data.accessToken);
+          } else {
+            // Token refresh failed, but keep user logged in with existing token
+            // until it actually fails on an API call
+            setUser(JSON.parse(storedUser));
+            setAccessToken(storedToken);
+            setIsAuthenticated(true);
+          }
+        } catch (refreshError) {
+          // Token refresh failed, try to use existing token
+          // User will be logged out on next API failure
+          setUser(JSON.parse(storedUser));
+          setAccessToken(storedToken);
           setIsAuthenticated(true);
-          localStorage.setItem('user', JSON.stringify(response.data.user));
-        } else {
-          localStorage.removeItem('user');
         }
       }
     } catch (error) {
       console.error('Auth check failed:', error);
       localStorage.removeItem('user');
+      localStorage.removeItem('accessToken');
     } finally {
       setIsLoading(false);
     }
@@ -83,10 +99,20 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await axios.post(
         `${import.meta.env.VITE_API_URL}/auth/register`,
-        userData
+        userData,
+        { withCredentials: true }
       );
 
       if (response.data.success) {
+        // Auto-login user after successful registration if token is provided
+        if (response.data.accessToken && response.data.user) {
+          setUser(response.data.user);
+          setAccessToken(response.data.accessToken);
+          setIsAuthenticated(true);
+          localStorage.setItem('user', JSON.stringify(response.data.user));
+          localStorage.setItem('accessToken', response.data.accessToken);
+          return { success: true, autoLoggedIn: true, message: response.data.message };
+        }
         return { success: true, message: response.data.message };
       } else {
         return {
@@ -116,6 +142,7 @@ export const AuthProvider = ({ children }) => {
       setAccessToken(null);
       setIsAuthenticated(false);
       localStorage.removeItem('user');
+      localStorage.removeItem('accessToken');
     }
   };
 
