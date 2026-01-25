@@ -40,7 +40,22 @@ export const CartProvider = ({ children }) => {
     try {
       const localCart = localStorage.getItem('cart');
       if (localCart) {
-        setItems(JSON.parse(localCart));
+        const parsedCart = JSON.parse(localCart);
+        // Ensure all items have an _id for proper identification
+        const cartWithIds = parsedCart.map((item, index) => {
+          if (!item._id) {
+            return {
+              ...item,
+              _id: `guest_${item.product}_${item.variant || 'default'}_${index}`
+            };
+          }
+          return item;
+        });
+        setItems(cartWithIds);
+        // Save back with IDs if any were missing
+        if (cartWithIds.some((item, index) => !parsedCart[index]._id)) {
+          saveLocalCart(cartWithIds);
+        }
       }
     } catch (error) {
       console.error('Error loading local cart:', error);
@@ -89,7 +104,7 @@ export const CartProvider = ({ children }) => {
           return { success: true };
         }
       } else {
-        // Add to local cart
+        // Add to local cart - use a unique ID for guest items
         const existingItemIndex = items.findIndex(
           (item) => item.product === productId && item.variant === variant
         );
@@ -99,7 +114,9 @@ export const CartProvider = ({ children }) => {
           newItems = [...items];
           newItems[existingItemIndex].quantity += quantity;
         } else {
-          newItems = [...items, { product: productId, variant, quantity, price }];
+          // Generate a unique ID for guest cart items
+          const guestItemId = `guest_${productId}_${variant || 'default'}_${Date.now()}`;
+          newItems = [...items, { _id: guestItemId, product: productId, variant, quantity, price }];
         }
 
         setItems(newItems);
@@ -126,9 +143,13 @@ export const CartProvider = ({ children }) => {
           return { success: true };
         }
       } else {
-        const newItems = items.map((item) =>
-          item._id === itemId ? { ...item, quantity } : item
-        );
+        // For guest users, find by _id
+        const itemIndex = items.findIndex((item) => item._id === itemId);
+        if (itemIndex === -1) {
+          return { success: false, message: 'Item not found' };
+        }
+        const newItems = [...items];
+        newItems[itemIndex] = { ...newItems[itemIndex], quantity };
         setItems(newItems);
         saveLocalCart(newItems);
         return { success: true };
@@ -152,7 +173,12 @@ export const CartProvider = ({ children }) => {
           return { success: true };
         }
       } else {
+        // For guest users, filter by _id
         const newItems = items.filter((item) => item._id !== itemId);
+        // If no items were removed, return error
+        if (newItems.length === items.length) {
+          return { success: false, message: 'Item not found' };
+        }
         setItems(newItems);
         saveLocalCart(newItems);
         return { success: true };

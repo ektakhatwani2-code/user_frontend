@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { FiTrash2, FiMinus, FiPlus } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import { useCart } from '../../context/CartContext';
-import Button from '../common/Button';
 
 const CartItem = ({ item }) => {
   const { updateQuantity, removeItem } = useCart();
@@ -56,11 +55,11 @@ const CartItem = ({ item }) => {
   const itemTotal = productPrice * item.quantity;
 
   return (
-    <div className="flex gap-4 py-6 border-b border-border">
+    <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 py-4 sm:py-6 border-b border-border">
       {/* Product Image */}
       <Link
         to={`/product/${productSlug}`}
-        className="flex-shrink-0 w-24 h-24 md:w-32 md:h-32 border border-border rounded-lg overflow-hidden hover:opacity-75 transition-opacity"
+        className="flex-shrink-0 w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 border border-border rounded-lg overflow-hidden hover:opacity-75 transition-opacity"
       >
         {productImage ? (
           <img
@@ -77,24 +76,24 @@ const CartItem = ({ item }) => {
 
       {/* Product Details */}
       <div className="flex-1 min-w-0">
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start justify-between gap-2 sm:gap-4">
           <div className="flex-1 min-w-0">
             <Link
               to={`/product/${productSlug}`}
-              className="text-lg font-medium text-text-primary hover:text-primary transition-colors line-clamp-2"
+              className="text-sm sm:text-base md:text-lg font-medium text-text-primary hover:text-primary transition-colors line-clamp-2"
             >
               {productTitle}
             </Link>
 
             {/* Variant */}
             {item.variant && (
-              <p className="text-sm text-text-body mt-1">
+              <p className="text-xs sm:text-sm text-text-body mt-1">
                 Size: <span className="font-medium">{item.variant}</span>
               </p>
             )}
 
-            {/* Price */}
-            <p className="text-lg font-semibold text-primary mt-2">
+            {/* Price - Mobile */}
+            <p className="text-sm sm:text-base font-semibold text-primary mt-1 sm:mt-2">
               ₹{productPrice.toLocaleString()}
             </p>
           </div>
@@ -103,7 +102,7 @@ const CartItem = ({ item }) => {
           <button
             onClick={handleRemove}
             disabled={removing}
-            className="hidden md:flex items-center gap-2 text-sm text-text-body hover:text-red-600 transition-colors disabled:opacity-50"
+            className="hidden md:flex items-center gap-2 text-sm text-text-body hover:text-red-600 transition-colors disabled:opacity-50 flex-shrink-0"
             aria-label="Remove item"
           >
             <FiTrash2 size={18} />
@@ -112,50 +111,54 @@ const CartItem = ({ item }) => {
         </div>
 
         {/* Quantity Controls & Total */}
-        <div className="flex items-center justify-between mt-4 gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-3 sm:mt-4 gap-3 sm:gap-4">
           {/* Quantity Selector */}
           <div className="flex items-center gap-2">
-            <span className="text-sm text-text-body mr-2">Quantity:</span>
+            <span className="text-xs sm:text-sm text-text-body mr-1 sm:mr-2 hidden xs:inline">Qty:</span>
             <div className="flex items-center border border-border rounded">
               <button
                 onClick={() => handleUpdateQuantity(item.quantity - 1)}
                 disabled={updating || item.quantity <= 1}
-                className="p-2 hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="p-1.5 sm:p-2 hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 aria-label="Decrease quantity"
               >
-                <FiMinus size={16} />
+                <FiMinus size={14} className="sm:hidden" />
+                <FiMinus size={16} className="hidden sm:block" />
               </button>
-              <span className="px-4 py-2 text-center min-w-[3rem] font-medium">
+              <span className="px-2 sm:px-4 py-1.5 sm:py-2 text-center min-w-[2rem] sm:min-w-[3rem] text-sm sm:text-base font-medium">
                 {item.quantity}
               </span>
               <button
                 onClick={() => handleUpdateQuantity(item.quantity + 1)}
                 disabled={updating}
-                className="p-2 hover:bg-gray-100 transition-colors disabled:opacity-50"
+                className="p-1.5 sm:p-2 hover:bg-gray-100 transition-colors disabled:opacity-50"
                 aria-label="Increase quantity"
               >
-                <FiPlus size={16} />
+                <FiPlus size={14} className="sm:hidden" />
+                <FiPlus size={16} className="hidden sm:block" />
               </button>
             </div>
           </div>
 
           {/* Item Total */}
-          <div className="text-right">
-            <p className="text-sm text-text-body">Subtotal</p>
-            <p className="text-xl font-bold text-text-primary">
+          <div className="flex items-center justify-between sm:justify-end sm:text-right">
+            <p className="text-xs sm:text-sm text-text-body sm:hidden">Subtotal:</p>
+            <p className="hidden sm:block text-sm text-text-body">Subtotal</p>
+            <p className="text-base sm:text-lg md:text-xl font-bold text-text-primary sm:mt-0 ml-2 sm:ml-0">
               ₹{itemTotal.toLocaleString()}
             </p>
           </div>
         </div>
 
-        {/* Remove Button - Mobile */}
+        {/* Remove Button - Mobile/Tablet */}
         <button
           onClick={handleRemove}
           disabled={removing}
-          className="md:hidden flex items-center gap-2 text-sm text-red-600 hover:text-red-700 transition-colors mt-3 disabled:opacity-50"
+          className="md:hidden flex items-center gap-1.5 text-xs sm:text-sm text-red-600 hover:text-red-700 transition-colors mt-3 disabled:opacity-50"
         >
-          <FiTrash2 size={16} />
-          <span>{removing ? 'Removing...' : 'Remove from cart'}</span>
+          <FiTrash2 size={14} className="sm:hidden" />
+          <FiTrash2 size={16} className="hidden sm:block" />
+          <span>{removing ? 'Removing...' : 'Remove'}</span>
         </button>
       </div>
     </div>

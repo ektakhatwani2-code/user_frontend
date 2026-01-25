@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { FiFilter, FiX } from 'react-icons/fi';
 import axios from 'axios';
 import ProductCard from '../components/product/ProductCard';
@@ -8,6 +8,7 @@ import Button from '../components/common/Button';
 
 const Collections = () => {
   const { slug } = useParams();
+  const [searchParams] = useSearchParams();
   const isAllProducts = slug === 'all';
 
   const [collection, setCollection] = useState(null);
@@ -17,16 +18,21 @@ const Collections = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalProducts, setTotalProducts] = useState(0);
 
-  // Filters
+  // Filters - separate input state from applied filters
   const [sortBy, setSortBy] = useState('-createdAt');
-  const [minPrice, setMinPrice] = useState('');
-  const [maxPrice, setMaxPrice] = useState('');
+  const [minPriceInput, setMinPriceInput] = useState('');
+  const [maxPriceInput, setMaxPriceInput] = useState('');
+  const [appliedMinPrice, setAppliedMinPrice] = useState('');
+  const [appliedMaxPrice, setAppliedMaxPrice] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+
+  // Get search query from URL
+  const searchQuery = searchParams.get('search') || '';
 
   useEffect(() => {
     fetchData();
     window.scrollTo(0, 0);
-  }, [slug, page, sortBy, minPrice, maxPrice]);
+  }, [slug, page, sortBy, appliedMinPrice, appliedMaxPrice, searchQuery]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -45,35 +51,72 @@ const Collections = () => {
     }
   };
 
+  const filterProductsByPrice = (products) => {
+    if (!appliedMinPrice && !appliedMaxPrice) return products;
+
+    return products.filter(product => {
+      const price = product.price || 0;
+      const min = appliedMinPrice ? parseFloat(appliedMinPrice) : 0;
+      const max = appliedMaxPrice ? parseFloat(appliedMaxPrice) : Infinity;
+      return price >= min && price <= max;
+    });
+  };
+
   const fetchAllProducts = async () => {
     const params = {
-      page,
-      limit: 12,
+      page: 1, // Fetch all for client-side filtering when price filter is active
+      limit: (appliedMinPrice || appliedMaxPrice) ? 100 : 12,
       sort: sortBy,
       status: 'active',
     };
 
-    if (minPrice) params.minPrice = minPrice;
-    if (maxPrice) params.maxPrice = maxPrice;
+    // Add price params (backend might support these)
+    if (appliedMinPrice) {
+      params.minPrice = appliedMinPrice;
+      params['price[gte]'] = appliedMinPrice;
+    }
+    if (appliedMaxPrice) {
+      params.maxPrice = appliedMaxPrice;
+      params['price[lte]'] = appliedMaxPrice;
+    }
+    if (searchQuery) params.search = searchQuery;
 
     const response = await axios.get(`${import.meta.env.VITE_API_URL}/products`, { params });
 
     if (response.data.success) {
-      setProducts(response.data.products);
-      setTotalPages(response.data.pages);
-      setTotalProducts(response.data.total);
+      let filteredProducts = response.data.products;
+
+      // Apply client-side price filtering as fallback
+      if (appliedMinPrice || appliedMaxPrice) {
+        filteredProducts = filterProductsByPrice(filteredProducts);
+      }
+
+      // Handle pagination for filtered results
+      const startIndex = (page - 1) * 12;
+      const paginatedProducts = filteredProducts.slice(startIndex, startIndex + 12);
+
+      setProducts(paginatedProducts);
+      setTotalPages(Math.ceil(filteredProducts.length / 12) || 1);
+      setTotalProducts(filteredProducts.length);
     }
   };
 
   const fetchCollectionProducts = async () => {
     const params = {
-      page,
-      limit: 12,
+      page: 1,
+      limit: (appliedMinPrice || appliedMaxPrice) ? 100 : 12,
       sort: sortBy,
     };
 
-    if (minPrice) params.minPrice = minPrice;
-    if (maxPrice) params.maxPrice = maxPrice;
+    // Add price params (backend might support these)
+    if (appliedMinPrice) {
+      params.minPrice = appliedMinPrice;
+      params['price[gte]'] = appliedMinPrice;
+    }
+    if (appliedMaxPrice) {
+      params.maxPrice = appliedMaxPrice;
+      params['price[lte]'] = appliedMaxPrice;
+    }
 
     const response = await axios.get(
       `${import.meta.env.VITE_API_URL}/collections/${slug}/products`,
@@ -82,9 +125,21 @@ const Collections = () => {
 
     if (response.data.success) {
       setCollection(response.data.collection);
-      setProducts(response.data.products);
-      setTotalPages(response.data.pages);
-      setTotalProducts(response.data.total);
+
+      let filteredProducts = response.data.products;
+
+      // Apply client-side price filtering as fallback
+      if (appliedMinPrice || appliedMaxPrice) {
+        filteredProducts = filterProductsByPrice(filteredProducts);
+      }
+
+      // Handle pagination for filtered results
+      const startIndex = (page - 1) * 12;
+      const paginatedProducts = filteredProducts.slice(startIndex, startIndex + 12);
+
+      setProducts(paginatedProducts);
+      setTotalPages(Math.ceil(filteredProducts.length / 12) || 1);
+      setTotalProducts(filteredProducts.length);
     }
   };
 
@@ -94,19 +149,24 @@ const Collections = () => {
   };
 
   const handleApplyFilters = () => {
+    setAppliedMinPrice(minPriceInput);
+    setAppliedMaxPrice(maxPriceInput);
     setPage(1);
     setShowFilters(false);
   };
 
   const handleClearFilters = () => {
-    setMinPrice('');
-    setMaxPrice('');
+    setMinPriceInput('');
+    setMaxPriceInput('');
+    setAppliedMinPrice('');
+    setAppliedMaxPrice('');
     setSortBy('-createdAt');
     setPage(1);
     setShowFilters(false);
   };
 
-  const hasActiveFilters = minPrice || maxPrice || sortBy !== '-createdAt';
+  const hasActiveFilters = appliedMinPrice || appliedMaxPrice || sortBy !== '-createdAt';
+  const hasSearchOrFilters = searchQuery || hasActiveFilters;
 
   if (loading && page === 1) {
     return <Loader fullScreen />;
@@ -132,10 +192,12 @@ const Collections = () => {
         <div className="bg-gray-100 py-8 sm:py-12 md:py-16">
           <div className="container-custom text-center px-4 sm:px-6">
             <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-text-primary mb-3 sm:mb-4">
-              All Products
+              {searchQuery ? `Search: "${searchQuery}"` : 'All Products'}
             </h1>
             <p className="text-sm sm:text-base md:text-lg text-text-body">
-              Browse our entire collection of handwoven textiles
+              {searchQuery
+                ? `Showing results for "${searchQuery}"`
+                : 'Browse our entire collection of handwoven textiles'}
             </p>
           </div>
         </div>
@@ -153,7 +215,7 @@ const Collections = () => {
         </nav>
 
         {/* Toolbar */}
-        <div className="flex items-center justify-between mb-6 sm:mb-8 gap-3 sm:gap-4 flex-wrap">
+        <div className="flex items-center justify-between mb-4 sm:mb-6 gap-3 sm:gap-4 flex-wrap">
           {/* Results Count */}
           <p className="text-text-body" style={{ fontSize: '14px' }}>
             <span className="hidden sm:inline">Showing</span> {products.length > 0 ? ((page - 1) * 12) + 1 : 0} - {Math.min(page * 12, totalProducts)} of {totalProducts}
@@ -190,6 +252,60 @@ const Collections = () => {
           </div>
         </div>
 
+        {/* Active Filters Display */}
+        {hasSearchOrFilters && (
+          <div className="flex flex-wrap items-center gap-2 mb-6 sm:mb-8">
+            <span className="text-sm text-text-body">Active filters:</span>
+            {searchQuery && (
+              <span className="inline-flex items-center gap-1 px-3 py-1 bg-primary/10 text-primary rounded-full text-sm">
+                Search: {searchQuery}
+                <button
+                  onClick={() => window.location.href = '/collections/all'}
+                  className="ml-1 hover:text-primary-hover"
+                >
+                  <FiX size={14} />
+                </button>
+              </span>
+            )}
+            {appliedMinPrice && (
+              <span className="inline-flex items-center gap-1 px-3 py-1 bg-primary/10 text-primary rounded-full text-sm">
+                Min: ₹{appliedMinPrice}
+                <button
+                  onClick={() => {
+                    setMinPriceInput('');
+                    setAppliedMinPrice('');
+                  }}
+                  className="ml-1 hover:text-primary-hover"
+                >
+                  <FiX size={14} />
+                </button>
+              </span>
+            )}
+            {appliedMaxPrice && (
+              <span className="inline-flex items-center gap-1 px-3 py-1 bg-primary/10 text-primary rounded-full text-sm">
+                Max: ₹{appliedMaxPrice}
+                <button
+                  onClick={() => {
+                    setMaxPriceInput('');
+                    setAppliedMaxPrice('');
+                  }}
+                  className="ml-1 hover:text-primary-hover"
+                >
+                  <FiX size={14} />
+                </button>
+              </span>
+            )}
+            {hasActiveFilters && (
+              <button
+                onClick={handleClearFilters}
+                className="text-sm text-primary hover:underline ml-2"
+              >
+                Clear all
+              </button>
+            )}
+          </div>
+        )}
+
         <div className="flex gap-8">
           {/* Sidebar Filters - Desktop */}
           <aside className="hidden lg:block w-64 flex-shrink-0">
@@ -215,16 +331,16 @@ const Collections = () => {
                   <input
                     type="number"
                     placeholder="Min Price"
-                    value={minPrice}
-                    onChange={(e) => setMinPrice(e.target.value)}
+                    value={minPriceInput}
+                    onChange={(e) => setMinPriceInput(e.target.value)}
                     className="w-full px-3 py-2 text-sm border border-form-border rounded-full focus:outline-none focus:border-primary"
                     style={{ fontSize: '14px' }}
                   />
                   <input
                     type="number"
                     placeholder="Max Price"
-                    value={maxPrice}
-                    onChange={(e) => setMaxPrice(e.target.value)}
+                    value={maxPriceInput}
+                    onChange={(e) => setMaxPriceInput(e.target.value)}
                     className="w-full px-3 py-2 text-sm border border-form-border rounded-full focus:outline-none focus:border-primary"
                     style={{ fontSize: '14px' }}
                   />
@@ -258,16 +374,16 @@ const Collections = () => {
                       <input
                         type="number"
                         placeholder="Min Price"
-                        value={minPrice}
-                        onChange={(e) => setMinPrice(e.target.value)}
+                        value={minPriceInput}
+                        onChange={(e) => setMinPriceInput(e.target.value)}
                         className="w-full px-3 py-2 text-sm border border-form-border rounded-full focus:outline-none focus:border-primary"
                         style={{ fontSize: '14px' }}
                       />
                       <input
                         type="number"
                         placeholder="Max Price"
-                        value={maxPrice}
-                        onChange={(e) => setMaxPrice(e.target.value)}
+                        value={maxPriceInput}
+                        onChange={(e) => setMaxPriceInput(e.target.value)}
                         className="w-full px-3 py-2 text-sm border border-form-border rounded-full focus:outline-none focus:border-primary"
                         style={{ fontSize: '14px' }}
                       />

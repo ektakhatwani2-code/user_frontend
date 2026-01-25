@@ -63,12 +63,18 @@ export const AuthProvider = ({ children }) => {
         setAccessToken(response.data.accessToken);
         setIsAuthenticated(true);
         localStorage.setItem('user', JSON.stringify(response.data.user));
+        localStorage.setItem('accessToken', response.data.accessToken);
         return { success: true };
+      } else {
+        return {
+          success: false,
+          message: response.data.message || 'Login failed',
+        };
       }
     } catch (error) {
       return {
         success: false,
-        message: error.response?.data?.message || 'Login failed',
+        message: error.response?.data?.message || 'Login failed. Please try again.',
       };
     }
   };
@@ -82,11 +88,16 @@ export const AuthProvider = ({ children }) => {
 
       if (response.data.success) {
         return { success: true, message: response.data.message };
+      } else {
+        return {
+          success: false,
+          message: response.data.message || 'Registration failed',
+        };
       }
     } catch (error) {
       return {
         success: false,
-        message: error.response?.data?.message || 'Registration failed',
+        message: error.response?.data?.message || 'Registration failed. Please try again.',
       };
     }
   };

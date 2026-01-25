@@ -1,6 +1,9 @@
 import { Outlet } from 'react-router-dom';
 import Header from './Header';
 import Footer from './Footer';
+import MobileNav from './MobileNav';
+import SearchModal from './SearchModal';
+import AuthModal from '../auth/AuthModal';
 
 const Layout = () => {
   return (
@@ -10,6 +13,11 @@ const Layout = () => {
         <Outlet />
       </main>
       <Footer />
+
+      {/* Modals and Drawers */}
+      <MobileNav />
+      <SearchModal />
+      <AuthModal />
     </div>
   );
 };
