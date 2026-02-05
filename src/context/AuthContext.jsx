@@ -74,23 +74,33 @@ export const AuthProvider = ({ children }) => {
         { withCredentials: true }
       );
 
+      console.log('Login response:', response.data);
+
       if (response.data.success) {
-        setUser(response.data.user);
-        setAccessToken(response.data.accessToken);
+        const userData = response.data.user;
+        const token = response.data.accessToken;
+
+        setUser(userData);
+        setAccessToken(token);
         setIsAuthenticated(true);
-        localStorage.setItem('user', JSON.stringify(response.data.user));
-        localStorage.setItem('accessToken', response.data.accessToken);
+        localStorage.setItem('user', JSON.stringify(userData));
+        localStorage.setItem('accessToken', token);
+
+        console.log('Login successful, user:', userData);
         return { success: true };
       } else {
+        console.log('Login failed:', response.data.message);
         return {
           success: false,
           message: response.data.message || 'Login failed',
         };
       }
     } catch (error) {
+      console.error('Login error:', error);
+      console.error('Error response:', error.response?.data);
       return {
         success: false,
-        message: error.response?.data?.message || 'Login failed. Please try again.',
+        message: error.response?.data?.message || 'Login failed. Please check your credentials.',
       };
     }
   };

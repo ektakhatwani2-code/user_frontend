@@ -98,20 +98,33 @@ const AuthModal = () => {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    if (!validateLoginForm()) return;
+    console.log('Login form submitted:', loginForm.email);
+
+    if (!validateLoginForm()) {
+      console.log('Form validation failed');
+      return;
+    }
 
     setIsLoading(true);
+    setErrors({});
+
     try {
+      console.log('Calling login...');
       const result = await login(loginForm.email, loginForm.password);
+      console.log('Login result:', result);
+
       if (result.success) {
         showToast('Welcome back!', 'success');
         // Merge guest cart with user cart
         await mergeGuestCart();
         closeAuthModal();
       } else {
+        setErrors({ general: result.message });
         showToast(result.message || 'Login failed', 'error');
       }
     } catch (error) {
+      console.error('Login handler error:', error);
+      setErrors({ general: 'An error occurred. Please try again.' });
       showToast('An error occurred. Please try again.', 'error');
     } finally {
       setIsLoading(false);
@@ -182,6 +195,11 @@ const AuthModal = () => {
           {authModalMode === 'login' ? (
             // Login Form
             <form onSubmit={handleLogin} className="space-y-4">
+              {errors.general && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-red-600 text-sm">{errors.general}</p>
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-text-primary mb-1">
                   Email
