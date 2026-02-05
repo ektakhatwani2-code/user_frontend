@@ -67,7 +67,7 @@ const Header = () => {
           {/* Logo */}
           <Link to="/" className="flex-shrink-0">
             <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-text-primary tracking-wide">
-              Sonam Luthria
+              Ektaa Couture
             </h1>
             <p className="hidden sm:block text-xs text-text-body text-center tracking-widest font-light">HANDWOVEN WITH LOVE</p>
           </Link>

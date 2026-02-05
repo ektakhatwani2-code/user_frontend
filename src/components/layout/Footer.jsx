@@ -67,7 +67,7 @@ const Footer = () => {
           {/* About */}
           <div>
             <h4 className="text-lg font-semibold text-text-primary mb-4">
-              Sonam Luthria
+              Ektaa Couture
             </h4>
             <p className="text-sm text-text-body mb-4">
               Handwoven fashion celebrating traditional craftsmanship and modern design.
@@ -83,7 +83,7 @@ const Footer = () => {
                 <FiFacebook size={20} />
               </a>
               <a
-                href="https://instagram.com/sonamluthria"
+                href="https://instagram.com/ektaacouture"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-text-body hover:text-primary transition-colors"
@@ -185,10 +185,10 @@ const Footer = () => {
               <li>
                 <p className="font-medium">Email:</p>
                 <a
-                  href="mailto:sonamluthria@gmail.com"
+                  href="mailto:ektaacouture@gmail.com"
                   className="hover:text-primary transition-colors"
                 >
-                  sonamluthria@gmail.com
+                  ektaacouture@gmail.com
                 </a>
               </li>
               <li>
@@ -212,7 +212,7 @@ const Footer = () => {
       <div className="border-t border-border py-6">
         <div className="container-custom">
           <p className="text-sm text-center text-text-body">
-            © {new Date().getFullYear()} Sonam Luthria. All rights reserved.
+            © {new Date().getFullYear()} Ektaa Couture. All rights reserved.
           </p>
         </div>
       </div>

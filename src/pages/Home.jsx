@@ -76,7 +76,7 @@ const Home = () => {
       ) : (
         <section className="container-custom py-20 text-center">
           <h2 className="text-3xl font-bold text-text-primary mb-4">
-            Welcome to Sonam Luthria
+            Welcome to Ektaa Couture
           </h2>
           <p className="text-text-body mb-8">
             Our collections are being curated. Please check back soon!
@@ -98,8 +98,8 @@ const Home = () => {
                 <div>
                   <p className="text-text-primary" style={{ fontSize: '14px', lineHeight: '1.8' }}>
                     <span className="font-semibold">Email:</span>{' '}
-                    <a href="mailto:sonamluthria@gmail.com" className="hover:text-primary transition-colors font-normal">
-                      sonamluthria@gmail.com
+                    <a href="mailto:ektaacouture@gmail.com" className="hover:text-primary transition-colors font-normal">
+                      ektaacouture@gmail.com
                     </a>
                   </p>
                 </div>
@@ -149,7 +149,7 @@ const Home = () => {
             {/* Right Side - Brand Name */}
             <div className="flex items-center justify-center lg:justify-end">
               <h1 className="text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-bold text-text-primary" style={{ letterSpacing: '0.1em' }}>
-                SONAM LUTHRIA
+                EKTAA COUTURE
               </h1>
             </div>
           </div>

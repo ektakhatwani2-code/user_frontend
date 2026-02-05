@@ -16,8 +16,8 @@ import ProductDetails from './pages/ProductDetails';
 import Collections from './pages/Collections';
 import Cart from './pages/Cart';
 import About from './pages/About';
-// import Checkout from './pages/Checkout';
-// import Account from './pages/Account';
+import Checkout from './pages/Checkout';
+import OrderSuccess from './pages/OrderSuccess';
 
 function App() {
   return (
@@ -31,7 +31,8 @@ function App() {
                 <Route path="collections/:slug" element={<Collections />} />
                 <Route path="product/:slug" element={<ProductDetails />} />
                 <Route path="cart" element={<Cart />} />
-                <Route path="checkout" element={<div className="container-custom py-8">Checkout Page</div>} />
+                <Route path="checkout" element={<Checkout />} />
+                <Route path="order-success/:orderId" element={<OrderSuccess />} />
                 <Route path="account" element={<div className="container-custom py-8">Account Page</div>} />
                 <Route path="about" element={<About />} />
                 <Route path="privacy" element={<div className="container-custom py-8">Privacy Policy</div>} />

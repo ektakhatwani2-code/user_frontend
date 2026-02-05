@@ -5,7 +5,7 @@ const About = () => {
       <section className="bg-gray-100 py-12 sm:py-16 md:py-20">
         <div className="container-custom text-center px-4 sm:px-6">
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-text-primary mb-4">
-            About Sonam Luthria
+            About Ektaa Couture
           </h1>
           <p className="text-base sm:text-lg text-text-body max-w-2xl mx-auto">
             Celebrating India's Rich Textile Heritage
@@ -22,7 +22,7 @@ const About = () => {
               <div className="relative overflow-hidden rounded-lg shadow-lg">
                 <img
                   src="https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=800&h=1000&fit=crop&q=80"
-                  alt="Sonam Luthria Fashion"
+                  alt="Ektaa Couture Fashion"
                   className="w-full h-auto object-cover"
                 />
               </div>
@@ -42,7 +42,7 @@ const About = () => {
                 </p>
 
                 <p>
-                  At Sonam Luthria, we believe in preserving the art of handloom weaving while
+                  At Ektaa Couture, we believe in preserving the art of handloom weaving while
                   creating contemporary designs that resonate with modern sensibilities. Our
                   collections feature exquisite sarees, each meticulously crafted with attention
                   to detail and a deep respect for traditional techniques.
