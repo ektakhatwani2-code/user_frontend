@@ -4,6 +4,7 @@ import { FiSearch, FiUser, FiShoppingCart, FiMenu, FiChevronDown } from 'react-i
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import { useUI } from '../../context/UIContext';
+import { useCollections } from '../../context/CollectionContext';
 import Badge from '../common/Badge';
 
 const Header = () => {
@@ -11,22 +12,10 @@ const Header = () => {
   const { isAuthenticated, user, logout } = useAuth();
   const { itemCount } = useCart();
   const { openCartDrawer, openAuthModal, openSearchModal, toggleMobileNav } = useUI();
+  const { collections } = useCollections();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showShopMenu, setShowShopMenu] = useState(false);
   const [shopMenuTimeout, setShopMenuTimeout] = useState(null);
-
-  const collections = [
-    { name: 'EK TAAR', slug: 'ek-taar' },
-    { name: 'Cutwork', slug: 'cutwork' },
-    { name: 'Kahaani', slug: 'kahaani' },
-    { name: 'DRIFT COLLECTION', slug: 'drift' },
-    { name: 'Festive Solids', slug: 'festive-solids' },
-    { name: 'DHAAGA', slug: 'dhaaga' },
-    { name: 'Florals and Frills', slug: 'florals-and-frills' },
-    { name: 'CITY ESCAPE', slug: 'city-escape' },
-    { name: 'Avsar', slug: 'avsar' },
-    { name: 'Handloom', slug: 'handloom' },
-  ];
 
   const handleShowShopMenu = () => {
     if (shopMenuTimeout) {

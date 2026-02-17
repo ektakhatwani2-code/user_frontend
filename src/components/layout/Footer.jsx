@@ -185,23 +185,28 @@ const Footer = () => {
               <li>
                 <p className="font-medium">Email:</p>
                 <a
-                  href="mailto:ektaacouture@gmail.com"
+                  href="mailto:Ektacouture04@gmail.com"
                   className="hover:text-primary transition-colors"
                 >
-                  ektaacouture@gmail.com
+                  Ektacouture04@gmail.com
                 </a>
               </li>
               <li>
                 <p className="font-medium">Phone:</p>
                 <a
-                  href="tel:+919819864108"
+                  href="tel:+918462000416"
                   className="hover:text-primary transition-colors"
                 >
-                  +91 98198 64108
+                  +91 84620 00416
                 </a>
               </li>
               <li>
+                <p className="font-medium">Address:</p>
+                <p>M-11 Sec-1, Avanti Vihar, ATM Chowk, Raipur, Chhattisgarh</p>
+              </li>
+              <li>
                 <p className="font-medium">By Appointment Only</p>
+                <p className="text-xs">Please call and confirm before visiting</p>
               </li>
             </ul>
           </div>

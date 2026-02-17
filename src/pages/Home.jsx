@@ -98,8 +98,8 @@ const Home = () => {
                 <div>
                   <p className="text-text-primary" style={{ fontSize: '14px', lineHeight: '1.8' }}>
                     <span className="font-semibold">Email:</span>{' '}
-                    <a href="mailto:ektaacouture@gmail.com" className="hover:text-primary transition-colors font-normal">
-                      ektaacouture@gmail.com
+                    <a href="mailto:Ektacouture04@gmail.com" className="hover:text-primary transition-colors font-normal">
+                      Ektacouture04@gmail.com
                     </a>
                   </p>
                 </div>
@@ -107,8 +107,8 @@ const Home = () => {
                 <div>
                   <p className="text-text-primary" style={{ fontSize: '14px', lineHeight: '1.8' }}>
                     <span className="font-semibold">Call:</span>{' '}
-                    <a href="tel:+919898198641" className="hover:text-primary transition-colors font-normal">
-                      +91 98198 64108
+                    <a href="tel:+918462000416" className="hover:text-primary transition-colors font-normal">
+                      +91 84620 00416
                     </a>
                   </p>
                 </div>
@@ -117,14 +117,14 @@ const Home = () => {
                   <p className="text-text-primary" style={{ fontSize: '14px', lineHeight: '1.8' }}>
                     <span className="font-semibold">Address:</span>{' '}
                     <span className="font-normal">
-                      Owners Industrial Estate, Gabriel Road, Mahim West, Mumbai - 400016
+                      M-11 Sec-1, Avanti Vihar, ATM Chowk, Raipur, Chhattisgarh
                     </span>
                   </p>
                 </div>
 
                 <div className="pt-2">
                   <p className="text-text-primary italic" style={{ fontSize: '14px' }}>
-                    By Appointment Only
+                    By Appointment Only - Please call and confirm before visiting
                   </p>
                 </div>
 

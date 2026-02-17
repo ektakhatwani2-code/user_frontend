@@ -6,6 +6,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { UIProvider } from './context/UIContext';
+import { CollectionProvider } from './context/CollectionContext';
 
 // Layout
 import Layout from './components/layout/Layout';
@@ -25,6 +26,7 @@ function App() {
       <AuthProvider>
         <CartProvider>
           <UIProvider>
+            <CollectionProvider>
             <Routes>
               <Route path="/" element={<Layout />}>
                 <Route index element={<Home />} />
@@ -43,6 +45,7 @@ function App() {
             </Routes>
 
             <ToastContainer position="top-right" autoClose={3000} />
+            </CollectionProvider>
           </UIProvider>
         </CartProvider>
       </AuthProvider>

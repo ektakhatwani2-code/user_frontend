@@ -3,25 +3,14 @@ import { Link, useNavigate } from 'react-router-dom';
 import { FiX, FiChevronDown, FiChevronUp, FiUser, FiLogOut } from 'react-icons/fi';
 import { useUI } from '../../context/UIContext';
 import { useAuth } from '../../context/AuthContext';
+import { useCollections } from '../../context/CollectionContext';
 
 const MobileNav = () => {
   const navigate = useNavigate();
   const { isMobileNavOpen, closeMobileNav, openAuthModal } = useUI();
   const { isAuthenticated, user, logout } = useAuth();
+  const { collections } = useCollections();
   const [showCollections, setShowCollections] = useState(false);
-
-  const collections = [
-    { name: 'EK TAAR', slug: 'ek-taar' },
-    { name: 'Cutwork', slug: 'cutwork' },
-    { name: 'Kahaani', slug: 'kahaani' },
-    { name: 'DRIFT COLLECTION', slug: 'drift' },
-    { name: 'Festive Solids', slug: 'festive-solids' },
-    { name: 'DHAAGA', slug: 'dhaaga' },
-    { name: 'Florals and Frills', slug: 'florals-and-frills' },
-    { name: 'CITY ESCAPE', slug: 'city-escape' },
-    { name: 'Avsar', slug: 'avsar' },
-    { name: 'Handloom', slug: 'handloom' },
-  ];
 
   const handleLinkClick = () => {
     closeMobileNav();
