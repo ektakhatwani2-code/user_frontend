@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { FiArrowLeft, FiLock, FiCheck } from 'react-icons/fi';
+import { FiArrowLeft, FiLock, FiX } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
@@ -16,6 +16,8 @@ const Checkout = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('razorpay');
+  // Mock-payment dialog state (used when backend is in PAYMENT_MODE=mock).
+  const [mockPayment, setMockPayment] = useState(null); // { orderId, providerOrderId, simulated, amount }
 
   const [shippingAddress, setShippingAddress] = useState({
     fullName: user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : '',
@@ -46,17 +48,18 @@ const Checkout = () => {
     }
   }, [isAuthenticated, items, navigate]);
 
-  // Load Razorpay script
-  useEffect(() => {
-    const script = document.createElement('script');
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    script.async = true;
-    document.body.appendChild(script);
-
-    return () => {
-      document.body.removeChild(script);
-    };
-  }, []);
+  // Load Razorpay script lazily — only when needed (skipped in mock mode)
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      if (window.Razorpay) return resolve(true);
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.async = true;
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -75,8 +78,11 @@ const Checkout = () => {
     }
     if (!shippingAddress.phone.trim()) {
       newErrors.phone = 'Phone number is required';
-    } else if (!/^[6-9]\d{9}$/.test(shippingAddress.phone.trim())) {
-      newErrors.phone = 'Enter a valid 10-digit phone number';
+    } else {
+      const cleaned = shippingAddress.phone.replace(/[\s()-]/g, '');
+      if (!/^\+?\d{7,15}$/.test(cleaned)) {
+        newErrors.phone = 'Enter a valid phone number';
+      }
     }
     if (!shippingAddress.addressLine1.trim()) {
       newErrors.addressLine1 = 'Address is required';
@@ -129,27 +135,52 @@ const Checkout = () => {
 
   const initiateRazorpayPayment = async (order) => {
     try {
-      // Create Razorpay order
-      const razorpayResponse = await api.post('/payments/create-order', {
+      const createRes = await api.post('/payments/create-order', {
         amount: total,
         currency: 'INR',
         orderId: order._id,
       });
 
-      if (!razorpayResponse.data.success) {
+      if (!createRes.data.success) {
         throw new Error('Failed to create payment order');
       }
 
-      const { orderId: razorpayOrderId, key } = razorpayResponse.data;
+      const {
+        provider,
+        orderId: providerOrderId,
+        key,
+        simulated,
+      } = createRes.data;
 
-      // Open Razorpay checkout
+      // Mock provider: show our own confirm dialog so the flow visually
+      // completes instead of silently auto-finishing. Razorpay's full checkout
+      // (UPI / Card / Net Banking / Wallet picker) shows up automatically when
+      // PAYMENT_MODE=razorpay is configured with real keys.
+      if (provider === 'mock' && simulated) {
+        setMockPayment({
+          orderId: order._id,
+          orderNumber: order.orderNumber,
+          providerOrderId,
+          simulated,
+          amount: total,
+        });
+        return;
+      }
+
+      // Real Razorpay: open the hosted checkout modal. It already shows UPI,
+      // cards, net banking, wallets etc. as tabs — we don't restrict here.
+      const loaded = await loadRazorpayScript();
+      if (!loaded || !window.Razorpay) {
+        throw new Error('Could not load Razorpay checkout');
+      }
+
       const options = {
         key: key || import.meta.env.VITE_RAZORPAY_KEY_ID,
         amount: total * 100,
         currency: 'INR',
         name: 'Ektaa Couture',
         description: `Order #${order.orderNumber}`,
-        order_id: razorpayOrderId,
+        order_id: providerOrderId,
         handler: async function (response) {
           await verifyPayment(response, order._id);
         },
@@ -158,9 +189,7 @@ const Checkout = () => {
           email: user?.email || '',
           contact: shippingAddress.phone,
         },
-        theme: {
-          color: '#000000',
-        },
+        theme: { color: '#000000' },
         modal: {
           ondismiss: function () {
             setIsProcessing(false);
@@ -169,16 +198,16 @@ const Checkout = () => {
         },
       };
 
-      const razorpay = new window.Razorpay(options);
-      razorpay.on('payment.failed', function (response) {
+      const rz = new window.Razorpay(options);
+      rz.on('payment.failed', function (response) {
         setIsProcessing(false);
         toast.error(`Payment failed: ${response.error.description}`);
       });
-      razorpay.open();
+      rz.open();
     } catch (error) {
-      console.error('Razorpay error:', error);
+      console.error('Payment init error:', error);
       setIsProcessing(false);
-      toast.error('Failed to initiate payment');
+      toast.error(error?.response?.data?.message || 'Failed to initiate payment');
     }
   };
 
@@ -219,20 +248,61 @@ const Checkout = () => {
       // Create order in database
       const order = await createOrder();
 
+      if (!order || !order._id) {
+        throw new Error('Order was created but no order ID was returned');
+      }
+
       if (paymentMethod === 'razorpay') {
-        // Initiate Razorpay payment
+        // Initiate online payment flow (mock or real Razorpay)
         await initiateRazorpayPayment(order);
       } else if (paymentMethod === 'cod') {
-        // For COD, directly navigate to success
         toast.success('Order placed successfully!');
-        await clearCart();
+        // clearCart is best-effort — even if it fails the order is real.
+        try {
+          await clearCart();
+        } catch (e) {
+          console.warn('clearCart failed (non-fatal):', e);
+        }
         navigate(`/order-success/${order._id}`);
       }
     } catch (error) {
       console.error('Order error:', error);
-      toast.error(error.response?.data?.message || 'Failed to create order');
+      const msg =
+        error.response?.data?.message ||
+        error.response?.data?.error ||
+        error.message ||
+        'Failed to place order';
+      toast.error(msg);
       setIsProcessing(false);
     }
+  };
+
+  // Confirm the mock payment flow — verifies on the server with the simulated
+  // signature and then finishes exactly like a real Razorpay completion.
+  const confirmMockPayment = async () => {
+    if (!mockPayment) return;
+    try {
+      await verifyPayment(
+        {
+          razorpay_order_id: mockPayment.providerOrderId,
+          razorpay_payment_id: mockPayment.simulated.paymentId,
+          razorpay_signature: mockPayment.simulated.signature,
+        },
+        mockPayment.orderId
+      );
+      setMockPayment(null);
+    } catch (e) {
+      console.error('Mock payment verify failed', e);
+      toast.error('Payment failed. Please try again.');
+      setMockPayment(null);
+      setIsProcessing(false);
+    }
+  };
+
+  const cancelMockPayment = () => {
+    setMockPayment(null);
+    setIsProcessing(false);
+    toast.info('Payment cancelled');
   };
 
   if (!isAuthenticated || items.length === 0) {
@@ -418,18 +488,14 @@ const Checkout = () => {
                   className="w-4 h-4 text-primary"
                 />
                 <div className="flex-1">
-                  <span className="font-medium text-text-primary">
-                    Pay Online (Razorpay)
-                  </span>
+                  <span className="font-medium text-text-primary">Pay Online</span>
                   <p className="text-xs text-text-body mt-1">
-                    Credit/Debit Card, UPI, Net Banking, Wallets
+                    Credit / Debit Card, UPI, Net Banking, Wallets
                   </p>
                 </div>
-                <img
-                  src="https://razorpay.com/assets/razorpay-glyph.svg"
-                  alt="Razorpay"
-                  className="h-6"
-                />
+                <span className="text-[10px] uppercase tracking-widest text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
+                  Secure
+                </span>
               </label>
 
               <label
@@ -448,12 +514,8 @@ const Checkout = () => {
                   className="w-4 h-4 text-primary"
                 />
                 <div className="flex-1">
-                  <span className="font-medium text-text-primary">
-                    Cash on Delivery
-                  </span>
-                  <p className="text-xs text-text-body mt-1">
-                    Pay when your order arrives
-                  </p>
+                  <span className="font-medium text-text-primary">Cash on Delivery</span>
+                  <p className="text-xs text-text-body mt-1">Pay when your order arrives</p>
                 </div>
               </label>
             </div>
@@ -549,6 +611,71 @@ const Checkout = () => {
           </div>
         </div>
       </div>
+
+      {/* Mock payment dialog — only shown when the backend is in
+          PAYMENT_MODE=mock. With real Razorpay, their hosted modal opens
+          instead and provides the full UPI/Card/Net Banking/Wallet picker. */}
+      {mockPayment && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+              <div>
+                <p className="text-xs uppercase tracking-widest text-gray-500">
+                  Test mode · simulated payment
+                </p>
+                <h3 className="text-base font-semibold text-text-primary">
+                  Pay ₹{mockPayment.amount.toLocaleString()}
+                </h3>
+              </div>
+              <button
+                onClick={cancelMockPayment}
+                aria-label="Cancel"
+                className="text-gray-400 hover:text-gray-700"
+              >
+                <FiX size={20} />
+              </button>
+            </div>
+            <div className="px-5 py-5 space-y-4">
+              <div className="bg-gray-50 border border-border rounded p-3 text-sm">
+                <div className="flex justify-between text-gray-600">
+                  <span>Order</span>
+                  <span className="font-medium text-text-primary">
+                    #{mockPayment.orderNumber}
+                  </span>
+                </div>
+                <div className="flex justify-between text-gray-600 mt-1">
+                  <span>Amount</span>
+                  <span className="font-medium text-text-primary">
+                    ₹{mockPayment.amount.toLocaleString()}
+                  </span>
+                </div>
+              </div>
+              <p className="text-sm text-text-body">
+                Confirm to simulate a successful online payment. Real card / UPI /
+                net banking checkout shows up automatically once Razorpay live
+                keys are configured on the server.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={cancelMockPayment}
+                  className="flex-1 px-4 py-2 border border-form-border rounded text-sm hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmMockPayment}
+                  className="flex-1 px-4 py-2 bg-primary text-white rounded text-sm font-medium hover:bg-primary-hover"
+                >
+                  Pay ₹{mockPayment.amount.toLocaleString()}
+                </button>
+              </div>
+              <p className="text-[11px] text-gray-400 text-center">
+                Server is in test mode. No real money is charged.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

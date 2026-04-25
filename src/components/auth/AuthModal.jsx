@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { FiX, FiEye, FiEyeOff } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext';
 import { useUI } from '../../context/UIContext';
@@ -86,8 +87,13 @@ const AuthModal = () => {
     }
     if (!registerForm.password) {
       newErrors.password = 'Password is required';
-    } else if (registerForm.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
+    } else if (registerForm.password.length < 8) {
+      newErrors.password = 'Password must be at least 8 characters';
+    } else if (
+      !/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/.test(registerForm.password)
+    ) {
+      newErrors.password =
+        'Password must include uppercase, lowercase, number, and a special character';
     }
     if (registerForm.password !== registerForm.confirmPassword) {
       newErrors.confirmPassword = 'Passwords do not match';
@@ -252,6 +258,16 @@ const AuthModal = () => {
               >
                 {isLoading ? 'Signing in...' : 'Sign In'}
               </button>
+
+              <div className="text-center text-sm">
+                <Link
+                  to="/forgot-password"
+                  onClick={closeAuthModal}
+                  className="text-text-body hover:text-primary"
+                >
+                  Forgot password?
+                </Link>
+              </div>
             </form>
           ) : (
             // Register Form
@@ -324,7 +340,7 @@ const AuthModal = () => {
                     className={`w-full px-4 py-2 pr-10 border rounded-lg focus:outline-none focus:border-primary ${
                       errors.password ? 'border-red-500' : 'border-form-border'
                     }`}
-                    placeholder="Create a password"
+                    placeholder="At least 8 chars, e.g. Password@1"
                   />
                   <button
                     type="button"

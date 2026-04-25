@@ -131,9 +131,18 @@ export const AuthProvider = ({ children }) => {
         };
       }
     } catch (error) {
+      const data = error.response?.data;
+      let message = data?.message || 'Registration failed. Please try again.';
+      // The server returns per-field errors as { errors: [{ field, message }, ...] }
+      // when express-validator rejects the input. Surface those so the user
+      // sees the actual reason (e.g. "Password must include ...") rather than
+      // a generic "Validation failed".
+      if (Array.isArray(data?.errors) && data.errors.length) {
+        message = data.errors.map((e) => e.message).join(' · ');
+      }
       return {
         success: false,
-        message: error.response?.data?.message || 'Registration failed. Please try again.',
+        message,
       };
     }
   };

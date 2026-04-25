@@ -19,14 +19,43 @@ export const CartProvider = ({ children }) => {
   const [itemCount, setItemCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Load cart on mount
+  // Load cart on mount, auto-merging any guest cart on login
   useEffect(() => {
-    if (isAuthenticated) {
-      fetchCart();
-    } else {
-      loadLocalCart();
-    }
-  }, [isAuthenticated]);
+    const sync = async () => {
+      if (isAuthenticated) {
+        // If there is a guest cart in localStorage, merge it server-side first,
+        // then re-fetch the authoritative cart so quantities reflect both sources.
+        const localCart = localStorage.getItem('cart');
+        if (localCart && accessToken) {
+          try {
+            const guestItems = JSON.parse(localCart);
+            if (Array.isArray(guestItems) && guestItems.length > 0) {
+              await axios.post(
+                `${import.meta.env.VITE_API_URL}/cart/merge`,
+                {
+                  guestItems: guestItems.map((it) => ({
+                    productId: it.product,
+                    variant: it.variant || null,
+                    quantity: it.quantity,
+                    price: it.price,
+                  })),
+                },
+                { headers: { Authorization: `Bearer ${accessToken}` } }
+              );
+              localStorage.removeItem('cart');
+            }
+          } catch (err) {
+            console.error('Auto-merge guest cart failed:', err?.response?.data || err.message);
+          }
+        }
+        await fetchCart();
+      } else {
+        loadLocalCart();
+      }
+    };
+    sync();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, accessToken]);
 
   // Calculate subtotal and item count
   useEffect(() => {

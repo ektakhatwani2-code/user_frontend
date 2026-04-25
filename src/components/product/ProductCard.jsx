@@ -1,14 +1,16 @@
 import { Link } from 'react-router-dom';
-import { FiHeart, FiShoppingCart } from 'react-icons/fi';
+import { FiHeart, FiShoppingBag } from 'react-icons/fi';
 import Badge from '../common/Badge';
-import Button from '../common/Button';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
+import { useWishlist } from '../../context/WishlistContext';
 import { toast } from 'react-toastify';
 
 const ProductCard = ({ product, showQuickAdd = true }) => {
   const { isAuthenticated } = useAuth();
   const { addToCart } = useCart();
+  const { isInWishlist, toggle: toggleWishlist } = useWishlist();
+  const wished = isInWishlist(product._id);
 
   const calculateDiscount = () => {
     if (product.compareAtPrice && product.price) {
@@ -20,138 +22,135 @@ const ProductCard = ({ product, showQuickAdd = true }) => {
   const handleQuickAdd = async (e) => {
     e.preventDefault();
     e.stopPropagation();
-
     if (isOutOfStock) {
       toast.error('Product is out of stock');
       return;
     }
-
     const result = await addToCart(product._id, product.price, 1, null);
-
-    if (result.success) {
-      toast.success('Added to cart!');
-    } else {
-      toast.error(result.message || 'Failed to add to cart');
-    }
+    if (result.success) toast.success('Added to cart!');
+    else toast.error(result.message || 'Failed to add to cart');
   };
 
-  const handleWishlist = (e) => {
+  const handleWishlist = async (e) => {
     e.preventDefault();
     e.stopPropagation();
-
     if (!isAuthenticated) {
       toast.info('Please login to add to wishlist');
       return;
     }
-
-    // TODO: Implement wishlist functionality
-    toast.info('Wishlist feature coming soon!');
+    const wasWished = wished;
+    const result = await toggleWishlist(product._id);
+    if (result?.success) {
+      toast.success(wasWished ? 'Removed from wishlist' : 'Added to wishlist');
+    } else if (result?.message) {
+      toast.error(result.message);
+    }
   };
 
   const discount = calculateDiscount();
-  const isOutOfStock = product.inventory?.trackQuantity && product.inventory?.quantity === 0 && !product.inventory?.allowBackorder;
-  const isLowStock = product.inventory?.trackQuantity && product.inventory?.quantity > 0 && product.inventory?.quantity < 5;
+  const isOutOfStock =
+    product.inventory?.trackQuantity &&
+    product.inventory?.quantity === 0 &&
+    !product.inventory?.allowBackorder;
+
+  // Sort images by `position` so the admin's chosen banner image is index 0,
+  // then pick image[1] (if any) as the hover image.
+  const sortedImages = (product.images || [])
+    .slice()
+    .sort((a, b) => (a.position || 0) - (b.position || 0));
+  const primary = sortedImages[0];
+  const secondary = sortedImages[1] || sortedImages[0];
 
   return (
     <Link to={`/product/${product.slug}`} className="group block">
-      <div className="bg-white rounded-lg border border-border overflow-hidden hover:shadow-lg transition-all duration-300">
-        {/* Product Image */}
-        <div className="relative overflow-hidden aspect-square bg-gray-100">
-          {product.images && product.images.length > 0 ? (
+      {/* Image */}
+      <div className="relative overflow-hidden bg-gray-50 aspect-[3/4]">
+        {primary ? (
+          <>
             <img
-              src={product.images[0].url}
-              alt={product.images[0].alt || product.title}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              src={primary.url}
+              alt={primary.alt || product.title}
+              className="absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ease-out group-hover:opacity-0"
               loading="lazy"
             />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center bg-gray-200">
-              <span className="text-gray-400 text-xs sm:text-sm">No Image</span>
-            </div>
-          )}
-
-          {/* Badges */}
-          <div className="absolute top-1.5 sm:top-2 left-1.5 sm:left-2 flex flex-col gap-1 sm:gap-2">
-            {discount > 0 && (
-              <Badge variant="sale" size="sm" className="text-xs px-2 py-1">
-                {discount}% OFF
-              </Badge>
+            {secondary && secondary.url !== primary.url && (
+              <img
+                src={secondary.url}
+                alt={secondary.alt || product.title}
+                className="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-500 ease-out group-hover:opacity-100"
+                loading="lazy"
+              />
             )}
-            {isOutOfStock && (
-              <Badge variant="danger" size="sm" className="text-xs px-2 py-1">
-                Out of Stock
-              </Badge>
-            )}
-            {isLowStock && (
-              <Badge variant="warning" size="sm" className="text-xs px-2 py-1">
-                Low Stock
-              </Badge>
-            )}
-            {product.featured && (
-              <Badge variant="primary" size="sm" className="text-xs px-2 py-1">
-                Featured
-              </Badge>
-            )}
+          </>
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-gray-300">
+            <span className="text-xs">No image</span>
           </div>
+        )}
 
-          {/* Wishlist Button */}
-          <button
-            onClick={handleWishlist}
-            className="absolute top-1.5 sm:top-2 right-1.5 sm:right-2 p-1.5 sm:p-2 bg-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-gray-100"
-            aria-label="Add to wishlist"
-          >
-            <FiHeart size={16} className="sm:hidden text-text-primary" />
-            <FiHeart size={18} className="hidden sm:block text-text-primary" />
-          </button>
-
-          {/* Quick Add Button */}
-          {showQuickAdd && !isOutOfStock && (
-            <div className="absolute bottom-0 left-0 right-0 p-2 sm:p-4 opacity-0 group-hover:opacity-100 transition-opacity">
-              <Button
-                onClick={handleQuickAdd}
-                className="w-full flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm"
-                size="sm"
-              >
-                <FiShoppingCart size={14} className="sm:hidden" />
-                <FiShoppingCart size={16} className="hidden sm:block" />
-                <span className="hidden sm:inline">Quick Add</span>
-                <span className="sm:hidden">Add</span>
-              </Button>
-            </div>
+        {/* Top-left badges */}
+        <div className="absolute top-3 left-3 flex flex-col gap-1.5 pointer-events-none">
+          {discount > 0 && (
+            <Badge variant="sale" size="sm" className="text-[11px] px-2 py-0.5">
+              {discount}% OFF
+            </Badge>
+          )}
+          {isOutOfStock && (
+            <span className="text-[11px] uppercase tracking-wider bg-white/90 text-gray-900 px-2 py-0.5">
+              Sold out
+            </span>
+          )}
+          {!isOutOfStock && product.featured && (
+            <span className="text-[11px] uppercase tracking-wider bg-gray-900 text-white px-2 py-0.5">
+              Featured
+            </span>
           )}
         </div>
 
-        {/* Product Info */}
-        <div className="p-3 sm:p-4">
-          {/* Title */}
-          <h3 className="font-medium text-text-primary mb-1 sm:mb-2 line-clamp-2 min-h-[36px] sm:min-h-[42px]" style={{ fontSize: '12px' }}>
-            {product.title}
-          </h3>
+        {/* Wishlist (top right) — always visible when wished, fades in on hover otherwise */}
+        <button
+          onClick={handleWishlist}
+          aria-label={wished ? 'Remove from wishlist' : 'Add to wishlist'}
+          aria-pressed={wished}
+          className={`absolute top-3 right-3 p-2 bg-white/90 backdrop-blur rounded-full transition-opacity hover:bg-white ${
+            wished ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+          }`}
+        >
+          <FiHeart
+            size={16}
+            className={wished ? 'text-red-500' : 'text-gray-900'}
+            fill={wished ? 'currentColor' : 'none'}
+          />
+        </button>
 
-          {/* Collections */}
-          {product.collections && product.collections.length > 0 && (
-            <p className="text-text-body mb-1 sm:mb-2" style={{ fontSize: '12px' }}>
-              {product.collections[0].name}
-            </p>
-          )}
+        {/* Quick add bar (bottom, slides up on hover) */}
+        {showQuickAdd && !isOutOfStock && (
+          <button
+            onClick={handleQuickAdd}
+            className="absolute left-0 right-0 bottom-0 bg-gray-900 text-white text-xs uppercase tracking-widest py-3 translate-y-full group-hover:translate-y-0 transition-transform duration-300 flex items-center justify-center gap-2"
+          >
+            <FiShoppingBag size={14} />
+            Quick add
+          </button>
+        )}
+      </div>
 
-          {/* Price */}
-          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-            <span className="font-semibold text-primary" style={{ fontSize: '14px' }}>
-              ₹{product.price.toLocaleString()}
+      {/* Info */}
+      <div className="pt-3 pb-1 text-center">
+        <h3
+          className="font-medium text-gray-900 mb-1 line-clamp-1"
+          style={{ fontSize: '13px', letterSpacing: '0.02em' }}
+        >
+          {product.title}
+        </h3>
+        <div className="flex items-center justify-center gap-2 flex-wrap">
+          <span className="text-gray-900" style={{ fontSize: '13px' }}>
+            ₹{product.price.toLocaleString()}
+          </span>
+          {product.compareAtPrice && product.compareAtPrice > product.price && (
+            <span className="text-gray-400 line-through" style={{ fontSize: '12px' }}>
+              ₹{product.compareAtPrice.toLocaleString()}
             </span>
-            {product.compareAtPrice && (
-              <span className="text-gray-500 line-through" style={{ fontSize: '12px' }}>
-                ₹{product.compareAtPrice.toLocaleString()}
-              </span>
-            )}
-          </div>
-
-          {/* Stock Info */}
-          {isLowStock && (
-            <p className="text-xs text-yellow-600 mt-1 sm:mt-2">
-              Only {product.inventory.quantity} left!
-            </p>
           )}
         </div>
       </div>
