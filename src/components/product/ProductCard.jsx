@@ -54,12 +54,19 @@ const ProductCard = ({ product, showQuickAdd = true }) => {
     !product.inventory?.allowBackorder;
 
   // Sort images by `position` so the admin's chosen banner image is index 0,
-  // then pick image[1] (if any) as the hover image.
+  // then pick image[1] (if any) as the hover image. Dedup defensively — if
+  // legacy merges left a duplicate as image[1] (same cloudinaryId OR same
+  // URL as image[0]), the hover crossfade should fall back gracefully.
   const sortedImages = (product.images || [])
     .slice()
     .sort((a, b) => (a.position || 0) - (b.position || 0));
   const primary = sortedImages[0];
-  const secondary = sortedImages[1] || sortedImages[0];
+  const isDup = (a, b) => {
+    if (!a || !b) return false;
+    if (a.cloudinaryId && b.cloudinaryId && a.cloudinaryId === b.cloudinaryId) return true;
+    return a.url === b.url;
+  };
+  const secondary = sortedImages.find((img, i) => i > 0 && !isDup(img, primary)) || null;
 
   return (
     <Link to={`/product/${product.slug}`} className="group block">

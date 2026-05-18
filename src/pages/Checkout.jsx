@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { FiArrowLeft, FiLock, FiX } from 'react-icons/fi';
 import { toast } from 'react-toastify';
@@ -18,6 +18,23 @@ const Checkout = () => {
   const [paymentMethod, setPaymentMethod] = useState('razorpay');
   // Mock-payment dialog state (used when backend is in PAYMENT_MODE=mock).
   const [mockPayment, setMockPayment] = useState(null); // { orderId, providerOrderId, simulated, amount }
+
+  // Synchronous re-entry guard. `setIsProcessing(true)` is async — a
+  // double-click within one frame fires `handlePlaceOrder` twice before the
+  // disabled prop applies. A ref blocks the second call synchronously.
+  const inFlight = useRef(false);
+
+  // One idempotency key per checkout session (NOT per click). Every click
+  // sends the SAME key so the server collapses duplicates to a single Order.
+  // crypto.randomUUID is supported in all modern browsers; the fallback
+  // covers older Safaris and JSDOM-based tests.
+  const idempotencyKeyRef = useRef(null);
+  if (!idempotencyKeyRef.current) {
+    idempotencyKeyRef.current =
+      typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `ck-${Date.now()}-${Math.random().toString(36).slice(2, 14)}`;
+  }
 
   const [shippingAddress, setShippingAddress] = useState({
     fullName: user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : '',
@@ -129,7 +146,9 @@ const Checkout = () => {
       },
     };
 
-    const response = await api.post('/orders', orderData);
+    const response = await api.post('/orders', orderData, {
+      headers: { 'Idempotency-Key': idempotencyKeyRef.current },
+    });
     return response.data.order;
   };
 
@@ -193,6 +212,7 @@ const Checkout = () => {
         modal: {
           ondismiss: function () {
             setIsProcessing(false);
+            inFlight.current = false;
             toast.info('Payment cancelled');
           },
         },
@@ -201,12 +221,14 @@ const Checkout = () => {
       const rz = new window.Razorpay(options);
       rz.on('payment.failed', function (response) {
         setIsProcessing(false);
+        inFlight.current = false;
         toast.error(`Payment failed: ${response.error.description}`);
       });
       rz.open();
     } catch (error) {
       console.error('Payment init error:', error);
       setIsProcessing(false);
+      inFlight.current = false;
       toast.error(error?.response?.data?.message || 'Failed to initiate payment');
     }
   };
@@ -237,11 +259,18 @@ const Checkout = () => {
   };
 
   const handlePlaceOrder = async () => {
+    // Synchronous double-click / double-tap guard. React's `disabled` prop
+    // is async (setIsProcessing schedules a render), so two clicks within
+    // one frame can both pass the disabled check. The ref blocks the
+    // second call immediately.
+    if (inFlight.current) return;
+
     if (!validateForm()) {
       toast.error('Please fill all required fields');
       return;
     }
 
+    inFlight.current = true;
     setIsProcessing(true);
 
     try {
@@ -274,6 +303,7 @@ const Checkout = () => {
         'Failed to place order';
       toast.error(msg);
       setIsProcessing(false);
+      inFlight.current = false;
     }
   };
 
@@ -296,12 +326,14 @@ const Checkout = () => {
       toast.error('Payment failed. Please try again.');
       setMockPayment(null);
       setIsProcessing(false);
+      inFlight.current = false;
     }
   };
 
   const cancelMockPayment = () => {
     setMockPayment(null);
     setIsProcessing(false);
+    inFlight.current = false;
     toast.info('Payment cancelled');
   };
 

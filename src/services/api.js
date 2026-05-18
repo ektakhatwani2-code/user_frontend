@@ -1,7 +1,19 @@
 import axios from 'axios';
 
+// VITE_API_URL must be injected at build time. In production builds without
+// the env var we throw so the missing config is obvious instead of silently
+// shipping with an undefined baseURL (which produces requests to the same
+// origin and confusing 404s).
+const API_URL =
+  import.meta.env.VITE_API_URL ||
+  (import.meta.env.PROD
+    ? (() => {
+        throw new Error('VITE_API_URL is required in production builds');
+      })()
+    : 'http://localhost:5000/api');
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
+  baseURL: API_URL,
   withCredentials: true,
 });
 

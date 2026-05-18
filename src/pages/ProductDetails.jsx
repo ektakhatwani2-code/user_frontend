@@ -66,10 +66,25 @@ const ProductDetails = () => {
   }, [slug, navigate]);
 
   // Sort images by admin-controlled position so the banner image is first.
+  // Defense-in-depth dedup: even if a legacy merge or seed left duplicates in
+  // the DB, never render the same image twice in the carousel. Dedup by
+  // cloudinaryId when available, otherwise by URL.
   const images = useMemo(() => {
-    return ((product && product.images) || [])
+    const sorted = ((product && product.images) || [])
       .slice()
       .sort((a, b) => (a.position || 0) - (b.position || 0));
+    const seenCid = new Set();
+    const seenUrl = new Set();
+    return sorted.filter((img) => {
+      if (!img || !img.url) return false;
+      if (img.cloudinaryId) {
+        if (seenCid.has(img.cloudinaryId)) return false;
+        seenCid.add(img.cloudinaryId);
+      }
+      if (seenUrl.has(img.url)) return false;
+      seenUrl.add(img.url);
+      return true;
+    });
   }, [product]);
 
   const handleAddToCart = async () => {
