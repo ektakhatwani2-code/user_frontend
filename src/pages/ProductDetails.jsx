@@ -191,7 +191,7 @@ const ProductDetails = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
           {/* Gallery — wallpaper (big) on top, angle thumbnails below.
-              Capped at ~480px to match sonamluthria's compact PDP. */}
+              Capped at ~480px for a compact PDP. */}
           <div>
             <div className="max-w-md mx-auto lg:mx-0">
               {/* Main wallpaper image */}
