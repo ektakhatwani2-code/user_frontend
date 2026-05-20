@@ -6,6 +6,7 @@ import { useUI } from '../context/UIContext';
 import CartItem from '../components/cart/CartItem';
 import Button from '../components/common/Button';
 import Loader from '../components/common/Loader';
+import Seo from '../components/Seo';
 
 const Cart = () => {
   const navigate = useNavigate();
@@ -40,6 +41,7 @@ const Cart = () => {
   if (!items || items.length === 0) {
     return (
       <div className="container-custom py-16">
+        <Seo title="Your Cart" path="/cart" noindex />
         <div className="max-w-md mx-auto text-center">
           <div className="mb-8">
             <FiShoppingBag size={80} className="mx-auto text-gray-300" />
@@ -64,6 +66,7 @@ const Cart = () => {
 
   return (
     <div className="container-custom py-4 sm:py-6 md:py-8 px-4 sm:px-6">
+      <Seo title="Your Cart" path="/cart" noindex />
       {/* Breadcrumb */}
       <nav className="flex items-center gap-2 text-xs sm:text-sm text-text-body mb-4 sm:mb-6 md:mb-8">
         <Link to="/" className="hover:text-primary">Home</Link>

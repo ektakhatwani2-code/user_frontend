@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import api from '../services/api';
 import Button from '../components/common/Button';
+import Seo from '../components/Seo';
 
 const ResetPassword = () => {
   const { token } = useParams();
@@ -33,6 +34,7 @@ const ResetPassword = () => {
 
   return (
     <div className="container-custom py-12 px-4 sm:px-6">
+      <Seo title="Reset Password" path="/reset-password" noindex />
       <div className="max-w-md mx-auto bg-white border border-border rounded-lg p-6 sm:p-8">
         <h1 className="text-2xl font-bold text-text-primary mb-2">Reset Password</h1>
         <p className="text-text-body mb-6">Choose a new password for your account.</p>

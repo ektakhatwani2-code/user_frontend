@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { FiUser, FiPackage, FiMapPin, FiHeart, FiLogOut } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
 import Loader from '../components/common/Loader';
+import Seo from '../components/Seo';
 
 const Account = () => {
   const { user, isAuthenticated, isLoading, logout } = useAuth();
@@ -30,6 +31,7 @@ const Account = () => {
 
   return (
     <div className="container-custom py-6 sm:py-8 px-4 sm:px-6">
+      <Seo title="My Account" path="/account" noindex />
       <h1 className="text-2xl sm:text-3xl font-bold text-text-primary mb-2">
         My Account
       </h1>

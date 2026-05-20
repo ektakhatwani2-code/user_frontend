@@ -36,6 +36,9 @@ coverage/
 # Vercel
 .vercel
 
+# Auto-generated at build time
+public/sitemap.xml
+
 # Claude Code
 .claude/
 settings.local.json

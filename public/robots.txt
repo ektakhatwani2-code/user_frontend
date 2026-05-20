@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+
+Disallow: /account
+Disallow: /account/
+Disallow: /cart
+Disallow: /checkout
+Disallow: /order-success
+Disallow: /order-success/
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /reset-password/
+Disallow: /collections/all?search=
+
+Sitemap: https://ektaacouture.store/sitemap.xml

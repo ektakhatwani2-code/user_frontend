@@ -6,6 +6,7 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import Button from '../components/common/Button';
 import Loader from '../components/common/Loader';
+import Seo from '../components/Seo';
 import api from '../services/api';
 
 const Checkout = () => {
@@ -343,6 +344,7 @@ const Checkout = () => {
 
   return (
     <div className="container-custom py-4 sm:py-6 md:py-8 px-4 sm:px-6">
+      <Seo title="Checkout" path="/checkout" noindex />
       {/* Back to Cart */}
       <Link
         to="/cart"

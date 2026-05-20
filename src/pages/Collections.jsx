@@ -5,6 +5,8 @@ import axios from 'axios';
 import ProductCard from '../components/product/ProductCard';
 import Loader from '../components/common/Loader';
 import Button from '../components/common/Button';
+import Seo from '../components/Seo';
+import { breadcrumbSchema } from '../lib/structuredData';
 
 const Collections = () => {
   const { slug } = useParams();
@@ -172,8 +174,34 @@ const Collections = () => {
     return <Loader fullScreen />;
   }
 
+  const seoTitle = isAllProducts
+    ? searchQuery
+      ? `Search: ${searchQuery}`
+      : 'All Products'
+    : collection?.seo?.metaTitle || collection?.name || 'Collection';
+  const seoDescription = isAllProducts
+    ? 'Browse the full Ektaa Couture catalogue — handwoven sarees, designer suits, and traditional Indian couture.'
+    : collection?.seo?.metaDescription ||
+      collection?.description ||
+      `Shop the ${collection?.name || ''} collection at Ektaa Couture.`;
+  const seoPath = `/collections/${slug || 'all'}`;
+  const collectionBreadcrumb = [
+    { name: 'Home', path: '/' },
+    {
+      name: isAllProducts ? 'All Products' : collection?.name || 'Collection',
+      path: seoPath,
+    },
+  ];
+
   return (
     <div>
+      <Seo
+        title={seoTitle}
+        description={seoDescription}
+        path={seoPath}
+        noindex={Boolean(searchQuery)}
+        jsonLd={breadcrumbSchema(collectionBreadcrumb)}
+      />
       {/* Collection Banner */}
       {!isAllProducts && collection && (
         <div className="bg-gray-100 py-8 sm:py-12 md:py-16">

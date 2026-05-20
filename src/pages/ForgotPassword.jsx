@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import api from '../services/api';
 import Button from '../components/common/Button';
+import Seo from '../components/Seo';
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
@@ -26,6 +27,7 @@ const ForgotPassword = () => {
 
   return (
     <div className="container-custom py-12 px-4 sm:px-6">
+      <Seo title="Forgot Password" path="/forgot-password" noindex />
       <div className="max-w-md mx-auto bg-white border border-border rounded-lg p-6 sm:p-8">
         <h1 className="text-2xl font-bold text-text-primary mb-2">Forgot Password</h1>
         {done ? (

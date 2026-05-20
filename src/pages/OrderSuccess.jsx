@@ -4,6 +4,7 @@ import { FiCheckCircle, FiPackage, FiTruck, FiHome } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
 import Button from '../components/common/Button';
 import Loader from '../components/common/Loader';
+import Seo from '../components/Seo';
 import api from '../services/api';
 
 const OrderSuccess = () => {
@@ -58,6 +59,7 @@ const OrderSuccess = () => {
 
   return (
     <div className="container-custom py-8 sm:py-12 md:py-16 px-4 sm:px-6">
+      <Seo title="Order Placed" path="/order-success" noindex />
       <div className="max-w-2xl mx-auto">
         {/* Success Header */}
         <div className="text-center mb-8">

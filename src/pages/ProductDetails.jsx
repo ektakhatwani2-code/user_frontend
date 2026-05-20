@@ -7,6 +7,8 @@ import Button from '../components/common/Button';
 import Loader from '../components/common/Loader';
 import Badge from '../components/common/Badge';
 import ProductCard from '../components/product/ProductCard';
+import Seo from '../components/Seo';
+import { productSchema, breadcrumbSchema } from '../lib/structuredData';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useWishlist } from '../context/WishlistContext';
@@ -166,8 +168,29 @@ const ProductDetails = () => {
     product.inventory.quantity === 0 &&
     !product.inventory.allowBackorder;
 
+  const seoTitle = product.seo?.metaTitle || product.title;
+  const seoDescription =
+    product.seo?.metaDescription ||
+    (product.description
+      ? product.description.replace(/<[^>]*>/g, '').slice(0, 160)
+      : `Buy ${product.title} online at Ektaa Couture. Authentic handwoven Indian couture, fast shipping.`);
+  const primaryImage = images[0]?.url;
+  const productBreadcrumb = [
+    { name: 'Home', path: '/' },
+    { name: 'All Products', path: '/collections/all' },
+    { name: product.title, path: `/product/${product.slug}` },
+  ];
+
   return (
     <div className="bg-white">
+      <Seo
+        title={seoTitle}
+        description={seoDescription}
+        path={`/product/${product.slug}`}
+        image={primaryImage}
+        type="product"
+        jsonLd={[productSchema(product), breadcrumbSchema(productBreadcrumb)]}
+      />
       <div className="container-custom py-6 md:py-10 px-4 sm:px-6">
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-xs sm:text-sm text-gray-500 mb-6 md:mb-10">

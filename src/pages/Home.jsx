@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import axios from 'axios';
 import Button from '../components/common/Button';
 import Loader from '../components/common/Loader';
+import Seo from '../components/Seo';
+import { organizationSchema, websiteSchema } from '../lib/structuredData';
 
 const Home = () => {
   const [collections, setCollections] = useState([]);
@@ -31,6 +33,10 @@ const Home = () => {
 
   return (
     <div>
+      <Seo
+        path="/"
+        jsonLd={[organizationSchema(), websiteSchema()]}
+      />
       {/* Collection Banner Sections - Stacked Vertically */}
       {collections.length > 0 ? (
         collections.map((collection) => (

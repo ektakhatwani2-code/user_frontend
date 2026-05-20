@@ -1,6 +1,13 @@
+import Seo from '../components/Seo';
+
 const About = () => {
   return (
     <div>
+      <Seo
+        title="About Us"
+        description="Discover the story behind Ektaa Couture - celebrating India's rich textile heritage through handcrafted sarees and designer suits made by skilled artisans."
+        path="/about"
+      />
       {/* Hero Section */}
       <section className="bg-gray-100 py-12 sm:py-16 md:py-20">
         <div className="container-custom text-center px-4 sm:px-6">
