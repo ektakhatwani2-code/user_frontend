@@ -26,7 +26,7 @@ const ProductCard = ({ product, showQuickAdd = true }) => {
       toast.error('Product is out of stock');
       return;
     }
-    const result = await addToCart(product._id, product.price, 1, null);
+    const result = await addToCart(product._id, product.price, 1, null, product);
     if (result.success) toast.success('Added to cart!');
     else toast.error(result.message || 'Failed to add to cart');
   };

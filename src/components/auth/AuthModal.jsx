@@ -6,13 +6,25 @@ import { useUI } from '../../context/UIContext';
 import { useCart } from '../../context/CartContext';
 
 const AuthModal = () => {
-  const { login, register } = useAuth();
-  const { isAuthModalOpen, authModalMode, closeAuthModal, switchAuthMode, showToast } = useUI();
+  const { login, register, verifyOtp, resendOtp } = useAuth();
+  const {
+    isAuthModalOpen,
+    authModalMode,
+    authPendingEmail,
+    setAuthPendingEmail,
+    closeAuthModal,
+    switchAuthMode,
+    showToast,
+  } = useUI();
   const { mergeGuestCart } = useCart();
 
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
+
+  // OTP verification step state
+  const [otpCode, setOtpCode] = useState('');
+  const [resendIn, setResendIn] = useState(0); // resend cooldown (seconds)
 
   // Login form state
   const [loginForm, setLoginForm] = useState({
@@ -36,8 +48,17 @@ const AuthModal = () => {
       setRegisterForm({ firstName: '', lastName: '', email: '', password: '', confirmPassword: '' });
       setErrors({});
       setShowPassword(false);
+      setOtpCode('');
+      setResendIn(0);
     }
   }, [isAuthModalOpen]);
+
+  // Resend cooldown countdown for the OTP step
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const t = setTimeout(() => setResendIn((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendIn]);
 
   // Handle escape key
   useEffect(() => {
@@ -102,34 +123,39 @@ const AuthModal = () => {
     return Object.keys(newErrors).length === 0;
   };
 
+  // Move into the OTP step for a given email (used by both register & login).
+  const goToOtpStep = (email, message) => {
+    setAuthPendingEmail(email);
+    setOtpCode('');
+    setErrors({});
+    setResendIn(60);
+    switchAuthMode('otp');
+    if (message) showToast(message, 'info');
+  };
+
   const handleLogin = async (e) => {
     e.preventDefault();
-    console.log('Login form submitted:', loginForm.email);
-
-    if (!validateLoginForm()) {
-      console.log('Form validation failed');
-      return;
-    }
+    if (!validateLoginForm()) return;
 
     setIsLoading(true);
     setErrors({});
 
     try {
-      console.log('Calling login...');
       const result = await login(loginForm.email, loginForm.password);
-      console.log('Login result:', result);
 
       if (result.success) {
         showToast('Welcome back!', 'success');
         // Merge guest cart with user cart
         await mergeGuestCart();
         closeAuthModal();
+      } else if (result.requiresOtp) {
+        // Account exists but email isn't verified — backend sent a new code.
+        goToOtpStep(result.email, result.message || 'Please verify your email.');
       } else {
         setErrors({ general: result.message });
         showToast(result.message || 'Login failed', 'error');
       }
     } catch (error) {
-      console.error('Login handler error:', error);
       setErrors({ general: 'An error occurred. Please try again.' });
       showToast('An error occurred. Please try again.', 'error');
     } finally {
@@ -150,8 +176,11 @@ const AuthModal = () => {
         password: registerForm.password,
       });
       if (result.success) {
-        if (result.autoLoggedIn) {
-          // User was auto-logged in after registration
+        if (result.requiresOtp) {
+          // Customer must verify email via OTP before the account is usable.
+          goToOtpStep(result.email, result.message || 'Enter the code we emailed you.');
+        } else if (result.autoLoggedIn) {
+          // User was auto-logged in after registration (pre-verified accounts)
           showToast('Account created successfully! Welcome!', 'success');
           await mergeGuestCart();
           closeAuthModal();
@@ -166,6 +195,51 @@ const AuthModal = () => {
       }
     } catch (error) {
       showToast('An error occurred. Please try again.', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e) => {
+    e.preventDefault();
+    if (!/^\d{6}$/.test(otpCode)) {
+      setErrors({ otp: 'Enter the 6-digit code' });
+      return;
+    }
+    setIsLoading(true);
+    setErrors({});
+    try {
+      const result = await verifyOtp(authPendingEmail, otpCode);
+      if (result.success) {
+        showToast('Email verified! Welcome to Ektaa Couture.', 'success');
+        await mergeGuestCart();
+        setAuthPendingEmail('');
+        closeAuthModal();
+      } else {
+        setErrors({ otp: result.message });
+        showToast(result.message || 'Verification failed', 'error');
+      }
+    } catch (error) {
+      showToast('An error occurred. Please try again.', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (resendIn > 0 || isLoading) return;
+    setIsLoading(true);
+    try {
+      const result = await resendOtp(authPendingEmail);
+      showToast(
+        result.message || (result.success ? 'A new code has been sent.' : 'Could not resend code.'),
+        result.success ? 'success' : 'error'
+      );
+      if (result.success) {
+        setResendIn(60);
+        setOtpCode('');
+        setErrors({});
+      }
     } finally {
       setIsLoading(false);
     }
@@ -186,7 +260,11 @@ const AuthModal = () => {
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-border">
           <h2 className="text-xl font-semibold text-text-primary">
-            {authModalMode === 'login' ? 'Sign In' : 'Create Account'}
+            {authModalMode === 'login'
+              ? 'Sign In'
+              : authModalMode === 'register'
+              ? 'Create Account'
+              : 'Verify your email'}
           </h2>
           <button
             onClick={closeAuthModal}
@@ -269,7 +347,7 @@ const AuthModal = () => {
                 </Link>
               </div>
             </form>
-          ) : (
+          ) : authModalMode === 'register' ? (
             // Register Form
             <form onSubmit={handleRegister} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -381,9 +459,69 @@ const AuthModal = () => {
                 {isLoading ? 'Creating account...' : 'Create Account'}
               </button>
             </form>
+          ) : (
+            // OTP Verification Form
+            <form onSubmit={handleVerifyOtp} className="space-y-4">
+              <p className="text-sm text-text-body">
+                We've sent a 6-digit code to{' '}
+                <span className="font-medium text-text-primary">{authPendingEmail}</span>. Enter it
+                below to verify your email.
+              </p>
+
+              <div>
+                <label className="block text-sm font-medium text-text-primary mb-1">
+                  Verification code
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  className={`w-full px-4 py-2 border rounded-lg text-center text-2xl tracking-[0.5em] focus:outline-none focus:border-primary ${
+                    errors.otp ? 'border-red-500' : 'border-form-border'
+                  }`}
+                  placeholder="000000"
+                  autoFocus
+                />
+                {errors.otp && <p className="text-red-500 text-sm mt-1">{errors.otp}</p>}
+              </div>
+
+              <button
+                type="submit"
+                disabled={isLoading || otpCode.length !== 6}
+                className="w-full py-3 bg-primary text-white rounded-lg font-medium hover:bg-primary-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isLoading ? 'Verifying...' : 'Verify & Continue'}
+              </button>
+
+              <div className="text-center text-sm text-text-body">
+                Didn't get the code?{' '}
+                <button
+                  type="button"
+                  onClick={handleResendOtp}
+                  disabled={resendIn > 0 || isLoading}
+                  className="text-primary hover:underline font-medium disabled:opacity-50 disabled:cursor-not-allowed disabled:no-underline"
+                >
+                  {resendIn > 0 ? `Resend in ${resendIn}s` : 'Resend code'}
+                </button>
+              </div>
+
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={() => switchAuthMode('login')}
+                  className="text-sm text-text-body hover:text-primary"
+                >
+                  ← Back to sign in
+                </button>
+              </div>
+            </form>
           )}
 
           {/* Switch Mode */}
+          {authModalMode !== 'otp' && (
           <div className="mt-6 text-center text-sm text-text-body">
             {authModalMode === 'login' ? (
               <>
@@ -407,6 +545,7 @@ const AuthModal = () => {
               </>
             )}
           </div>
+          )}
         </div>
       </div>
     </div>

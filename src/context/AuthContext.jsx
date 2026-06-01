@@ -22,6 +22,21 @@ export const AuthProvider = ({ children }) => {
     checkAuth();
   }, []);
 
+  // When an API call detects an unrecoverable 401 (api.js dispatches this after
+  // a failed token refresh), drop to logged-out. Protected pages (Account,
+  // Checkout) gate on isAuthenticated and will redirect away on their own.
+  useEffect(() => {
+    const handleExpired = () => {
+      setUser(null);
+      setAccessToken(null);
+      setIsAuthenticated(false);
+      localStorage.removeItem('user');
+      localStorage.removeItem('accessToken');
+    };
+    window.addEventListener('auth:session-expired', handleExpired);
+    return () => window.removeEventListener('auth:session-expired', handleExpired);
+  }, []);
+
   const checkAuth = async () => {
     try {
       const storedUser = localStorage.getItem('user');
@@ -74,8 +89,6 @@ export const AuthProvider = ({ children }) => {
         { withCredentials: true }
       );
 
-      console.log('Login response:', response.data);
-
       if (response.data.success) {
         const userData = response.data.user;
         const token = response.data.accessToken;
@@ -86,21 +99,27 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('user', JSON.stringify(userData));
         localStorage.setItem('accessToken', token);
 
-        console.log('Login successful, user:', userData);
         return { success: true };
-      } else {
-        console.log('Login failed:', response.data.message);
-        return {
-          success: false,
-          message: response.data.message || 'Login failed',
-        };
       }
-    } catch (error) {
-      console.error('Login error:', error);
-      console.error('Error response:', error.response?.data);
       return {
         success: false,
-        message: error.response?.data?.message || 'Login failed. Please check your credentials.',
+        message: response.data.message || 'Login failed',
+      };
+    } catch (error) {
+      const data = error.response?.data;
+      // Unverified account: backend sent a fresh OTP — caller switches to the
+      // OTP step instead of showing a generic error.
+      if (data?.requiresOtp) {
+        return {
+          success: false,
+          requiresOtp: true,
+          email: data.email || email,
+          message: data.message || 'Please verify your email.',
+        };
+      }
+      return {
+        success: false,
+        message: data?.message || 'Login failed. Please check your credentials.',
       };
     }
   };
@@ -114,7 +133,17 @@ export const AuthProvider = ({ children }) => {
       );
 
       if (response.data.success) {
+        // Customer flow: backend requires email OTP verification before login.
+        if (response.data.requiresOtp) {
+          return {
+            success: true,
+            requiresOtp: true,
+            email: response.data.email || userData.email,
+            message: response.data.message,
+          };
+        }
         // Auto-login user after successful registration if token is provided
+        // (e.g. pre-verified admin accounts).
         if (response.data.accessToken && response.data.user) {
           setUser(response.data.user);
           setAccessToken(response.data.accessToken);
@@ -143,6 +172,53 @@ export const AuthProvider = ({ children }) => {
       return {
         success: false,
         message,
+      };
+    }
+  };
+
+  // Verify the registration OTP. On success the backend logs the user in
+  // (returns tokens), so we store the session just like login.
+  const verifyOtp = async (email, otp) => {
+    try {
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_URL}/auth/verify-otp`,
+        { email, otp },
+        { withCredentials: true }
+      );
+      if (response.data.success) {
+        const userData = response.data.user;
+        const token = response.data.accessToken;
+        setUser(userData);
+        setAccessToken(token);
+        setIsAuthenticated(true);
+        localStorage.setItem('user', JSON.stringify(userData));
+        localStorage.setItem('accessToken', token);
+        return { success: true };
+      }
+      return { success: false, message: response.data.message || 'Verification failed' };
+    } catch (error) {
+      const data = error.response?.data;
+      return {
+        success: false,
+        expired: Boolean(data?.expired),
+        message: data?.message || 'Verification failed. Please try again.',
+      };
+    }
+  };
+
+  const resendOtp = async (email) => {
+    try {
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_URL}/auth/resend-otp`,
+        { email },
+        { withCredentials: true }
+      );
+      return { success: Boolean(response.data.success), message: response.data.message };
+    } catch (error) {
+      return {
+        success: false,
+        message:
+          error.response?.data?.message || 'Could not resend the code. Please try again.',
       };
     }
   };
@@ -214,6 +290,8 @@ export const AuthProvider = ({ children }) => {
     isLoading,
     login,
     register,
+    verifyOtp,
+    resendOtp,
     logout,
     refreshToken,
     updateProfile,

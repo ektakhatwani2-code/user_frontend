@@ -16,7 +16,9 @@ export const UIProvider = ({ children }) => {
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
-  const [authModalMode, setAuthModalMode] = useState('login'); // 'login' or 'register'
+  const [authModalMode, setAuthModalMode] = useState('login'); // 'login' | 'register' | 'otp'
+  // Email awaiting OTP verification (carried into the 'otp' step of the modal).
+  const [authPendingEmail, setAuthPendingEmail] = useState('');
 
   const openCartDrawer = () => setIsCartDrawerOpen(true);
   const closeCartDrawer = () => setIsCartDrawerOpen(false);
@@ -71,6 +73,8 @@ export const UIProvider = ({ children }) => {
     // Auth Modal
     isAuthModalOpen,
     authModalMode,
+    authPendingEmail,
+    setAuthPendingEmail,
     openAuthModal,
     closeAuthModal,
     toggleAuthModal,

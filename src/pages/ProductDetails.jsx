@@ -95,9 +95,10 @@ const ProductDetails = () => {
     try {
       const result = await addToCart(
         product._id,
-        selectedVariant?.price || product.price,
+        product.price,
         quantity,
-        selectedVariant?.size || null
+        selectedVariant?.size || null,
+        product
       );
       if (result.success) toast.success('Added to cart!');
       else toast.error(result.message || 'Failed to add to cart');
@@ -162,7 +163,7 @@ const ProductDetails = () => {
   }
 
   const discount = calculateDiscount();
-  const currentPrice = selectedVariant?.price || product.price;
+  const currentPrice = product.price;
   const isOutOfStock =
     product.inventory.trackQuantity &&
     product.inventory.quantity === 0 &&
@@ -306,7 +307,7 @@ const ProductDetails = () => {
                 <span className="text-xl md:text-2xl text-gray-900">
                   Rs. {currentPrice.toLocaleString()}.00
                 </span>
-                {product.compareAtPrice && product.compareAtPrice > currentPrice && (
+                {product.compareAtPrice && product.compareAtPrice > product.price && (
                   <>
                     <span className="text-base text-gray-400 line-through">
                       Rs. {product.compareAtPrice.toLocaleString()}.00

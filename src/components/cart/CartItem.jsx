@@ -13,7 +13,28 @@ const CartItem = ({ item }) => {
   const product = item.product;
   const productTitle = product?.title || item.title || 'Product';
   const productSlug = product?.slug || '';
-  const productImage = product?.images?.[0]?.url || item.image || '';
+
+  // Resolve product image — handle both logged-in (array of objects) and guest (array or string)
+  let productImage = '';
+  if (product?.images) {
+    if (Array.isArray(product.images)) {
+      // Array of objects with .url or array of strings
+      const firstImage = product.images[0];
+      if (typeof firstImage === 'object' && firstImage?.url) {
+        productImage = firstImage.url;
+      } else if (typeof firstImage === 'string') {
+        productImage = firstImage;
+      }
+    } else if (typeof product.images === 'string') {
+      // Single string URL
+      productImage = product.images;
+    }
+  }
+  // Fallback to item.image if product.images didn't resolve
+  if (!productImage && item.image) {
+    productImage = item.image;
+  }
+
   const productPrice = item.price || product?.price || 0;
 
   const handleUpdateQuantity = async (newQuantity) => {

@@ -31,39 +31,71 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor to handle token refresh
+// Endpoints where a 401 means "bad/absent credentials", not "access token
+// expired". Trying to refresh for these is pointless and would loop the
+// refresh call onto itself.
+const AUTH_ENDPOINTS = ['/auth/login', '/auth/register', '/auth/refresh-token'];
+const isAuthEndpoint = (url = '') => AUTH_ENDPOINTS.some((p) => url.includes(p));
+
+// Single-flight refresh: when several requests 401 at once they share ONE
+// refresh request instead of firing in parallel and racing to overwrite each
+// other's tokens.
+let refreshPromise = null;
+const refreshAccessToken = () => {
+  if (!refreshPromise) {
+    refreshPromise = axios
+      .post(`${API_URL}/auth/refresh-token`, {}, { withCredentials: true })
+      .then((res) => {
+        const token = res.data?.accessToken;
+        if (!res.data?.success || !token) {
+          throw new Error('Refresh failed');
+        }
+        localStorage.setItem('accessToken', token);
+        return token;
+      })
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+  return refreshPromise;
+};
+
+// The session is unrecoverable (expired/absent refresh token). Clear it and —
+// only if the user actually HAD a session — broadcast an event so the app can
+// react. The guard keeps guests browsing public pages from ever being told
+// their "session expired". AuthContext clears its state (protected pages then
+// bounce to home) and Layout opens the login modal.
+const handleSessionExpired = () => {
+  const hadSession =
+    !!localStorage.getItem('accessToken') || !!localStorage.getItem('user');
+  localStorage.removeItem('user');
+  localStorage.removeItem('accessToken');
+  if (hadSession) {
+    window.dispatchEvent(new CustomEvent('auth:session-expired'));
+  }
+};
+
+// Response interceptor: transparently refresh on a 401, and on an
+// unrecoverable 401 surface a clean "log in again" flow instead of a raw error.
 api.interceptors.response.use(
-  (response) => {
-    return response;
-  },
+  (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
-    // If error is 401 and we haven't tried to refresh yet
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (
+      error.response?.status === 401 &&
+      originalRequest &&
+      !originalRequest._retry &&
+      !isAuthEndpoint(originalRequest.url)
+    ) {
       originalRequest._retry = true;
 
       try {
-        // Try to refresh the token
-        const response = await axios.post(
-          `${import.meta.env.VITE_API_URL}/auth/refresh-token`,
-          {},
-          { withCredentials: true }
-        );
-
-        if (response.data.success) {
-          const newAccessToken = response.data.accessToken;
-          localStorage.setItem('accessToken', newAccessToken);
-
-          // Retry the original request with new token
-          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-          return api(originalRequest);
-        }
+        const newAccessToken = await refreshAccessToken();
+        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+        return api(originalRequest);
       } catch (refreshError) {
-        // Refresh failed, redirect to login
-        localStorage.removeItem('user');
-        localStorage.removeItem('accessToken');
-        window.location.href = '/';
+        handleSessionExpired();
         return Promise.reject(refreshError);
       }
     }

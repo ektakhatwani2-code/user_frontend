@@ -118,7 +118,7 @@ export const CartProvider = ({ children }) => {
     }
   };
 
-  const addToCart = async (productId, price, quantity = 1, variant = null) => {
+  const addToCart = async (productId, price, quantity = 1, variant = null, productInfo = null) => {
     try {
       if (isAuthenticated && accessToken) {
         // Add to backend cart
@@ -135,17 +135,68 @@ export const CartProvider = ({ children }) => {
       } else {
         // Add to local cart - use a unique ID for guest items
         const existingItemIndex = items.findIndex(
-          (item) => item.product === productId && item.variant === variant
+          (item) => (item.product?._id || item.product) === productId && item.variant === variant
         );
 
         let newItems;
         if (existingItemIndex >= 0) {
           newItems = [...items];
+          // When matching an existing item, upgrade it with enriched productInfo if provided
+          // This self-heals stale items (created before the fix) that lack title/images
+          if (productInfo) {
+            // Extract the first image URL for a fallback
+            let imageUrl = '';
+            if (productInfo.images && Array.isArray(productInfo.images)) {
+              const firstImg = productInfo.images[0];
+              imageUrl = typeof firstImg === 'object' ? firstImg.url : firstImg;
+            } else if (typeof productInfo.images === 'string') {
+              imageUrl = productInfo.images;
+            }
+
+            // Upgrade the matched item with enriched product data
+            newItems[existingItemIndex].product = {
+              _id: productInfo._id,
+              title: productInfo.title,
+              images: productInfo.images,
+              slug: productInfo.slug
+            };
+            if (imageUrl) {
+              newItems[existingItemIndex].image = imageUrl;
+            }
+          }
+          // Increment quantity regardless of whether productInfo was provided
           newItems[existingItemIndex].quantity += quantity;
         } else {
           // Generate a unique ID for guest cart items
           const guestItemId = `guest_${productId}_${variant || 'default'}_${Date.now()}`;
-          newItems = [...items, { _id: guestItemId, product: productId, variant, quantity, price }];
+
+          let productObj = productId;
+          let imageUrl = '';
+
+          if (productInfo) {
+            // Extract the first image URL for a fallback
+            if (productInfo.images && Array.isArray(productInfo.images)) {
+              const firstImg = productInfo.images[0];
+              imageUrl = typeof firstImg === 'object' ? firstImg.url : firstImg;
+            } else if (typeof productInfo.images === 'string') {
+              imageUrl = productInfo.images;
+            }
+
+            productObj = {
+              _id: productInfo._id,
+              title: productInfo.title,
+              images: productInfo.images,
+              slug: productInfo.slug
+            };
+          }
+
+          const newItem = { _id: guestItemId, product: productObj, variant, quantity, price };
+          // Store resolved image URL as a fallback (guest carts may not have full product hydration)
+          if (imageUrl) {
+            newItem.image = imageUrl;
+          }
+
+          newItems = [...items, newItem];
         }
 
         setItems(newItems);
